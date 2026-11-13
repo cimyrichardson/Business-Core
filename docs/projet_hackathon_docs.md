@@ -5,7 +5,7 @@
 **Initiative IA expérimentale :** VYROXMIND
 **Catégorie :** Agents pour l'économie réelle
 **Durée :** 48 heures
-**Version du document :** v4
+**Version du document :** v5
 
 > **Convention linguistique de ce document.** Le document technique est rédigé en français pour l'équipe. **Tout ce que voit ou entend l'utilisateur final est en créole haïtien** : interface, messages d'erreur, réponses de l'assistant, messages WhatsApp/Telegram, rapports automatiques, scénario de démo et pitch. Les textes créoles de ce document sont des propositions à faire relire par un locuteur natif de l'équipe avant la démo.
 
@@ -31,7 +31,7 @@ Une commerçante ou un commerçant qui tient une boutique de quartier (alimentat
 
 - **Devise :** tous les montants sont en HTG.
 - **Langue :** créole haïtien partout côté utilisateur. Le routeur de secours reconnaît aussi quelques mots français, car les commerçants mélangent souvent les deux.
-- **Connectivité limitée :** le calcul, l'assistant de secours et l'interface web fonctionnent sans API IA externe. Les canaux de messagerie, eux, nécessitent internet (voir section 6.5).
+- **Connectivité limitée :** le calcul et l'assistant de secours fonctionnent sans API IA externe. Le backend et l'interface nécessitent toutefois internet pour accéder à Supabase ; les canaux de messagerie nécessitent aussi internet (voir section 6.5).
 - **Pratiques réelles :** les ventes informelles et le mobile money (par exemple MonCash) existent. Le MVP n'intègre aucun paiement réel ; le « mode de paiement » est une simple information saisie.
 - **Boutique de démonstration :** une boutique fictive réaliste, 15 à 25 produits aux prix plausibles en HTG, avec des noms de produits en créole.
 
@@ -60,7 +60,7 @@ Une commerçante ou un commerçant qui tient une boutique de quartier (alimentat
 | Python 3.11 ou 3.12 | Langage backend |
 | FastAPI + Uvicorn | API REST, webhooks, serveur de développement |
 | Pydantic / pydantic-settings | Validation et configuration |
-| SQLAlchemy + SQLite | Accès aux données, base locale simple |
+| SQLAlchemy + PostgreSQL (Supabase) | Accès à la base de données hébergée |
 | APScheduler | Rapports et alertes planifiés |
 | HTTPX | Appels sortants (API des messageries) et tests d'API |
 | pytest | Tests automatisés |
@@ -83,7 +83,7 @@ Une commerçante ou un commerçant qui tient une boutique de quartier (alimentat
 |---|---|---|
 | **WhatsApp (API Cloud de Meta)** | Canal cible pour la démo | Jeton de test temporaire, nombre de numéros limité ; règles de facturation à vérifier (section 6.5) |
 | **Telegram (API Bot)** | Canal de développement et de secours | Bot créé en quelques minutes ; le *long polling* évite d'avoir une URL publique |
-| **Simulateur de canal** | Tests et démo sans internet | Endpoint interne qui imite un message entrant (section 6.4) |
+| **Simulateur de canal** | Tests et démo sans API de messagerie | Endpoint interne qui imite un message entrant (section 6.4) ; le backend doit toujours joindre Supabase |
 | SMS / USSD | Feuille de route | Hors périmètre des 48 heures |
 
 ### IA
@@ -92,7 +92,7 @@ Une commerçante ou un commerçant qui tient une boutique de quartier (alimentat
 - **Mode de secours (obligatoire) :** routeur par mots-clés créole + modèles de phrases créoles écrits à la main. La démo doit fonctionner avec ce seul mode.
 - **VYROXMIND :** composant expérimental facultatif, branché via un adaptateur ; présenté comme expérimental tant que ses performances ne sont pas évaluées.
 
-**Pile recommandée pour aller vite :** React + TypeScript + Vite, FastAPI + SQLAlchemy + SQLite. Ne multipliez pas les bibliothèques avant d'avoir un parcours fonctionnel.
+**Pile recommandée pour aller vite :** React + TypeScript + Vite, FastAPI + SQLAlchemy + PostgreSQL sur Supabase. FastAPI reste l'unique API métier ; le frontend ne se connecte pas directement à la base. Ne multipliez pas les bibliothèques avant d'avoir un parcours fonctionnel.
 
 ## 5. Architecture
 
@@ -117,7 +117,7 @@ Commerçant
                         +-- SQLAlchemy
                               |
                               v
-                            SQLite
+                 PostgreSQL hébergé sur Supabase
 ```
 
 Un seul orchestrateur sert tous les canaux : le web, WhatsApp, Telegram et le simulateur appellent la même fonction. Ajouter un canal revient à écrire un petit adaptateur.
@@ -184,7 +184,7 @@ Si l'équipe implémente un vrai appel LLM avec choix d'outils, elle peut parler
 | « mwa sa a » | Du 1er du mois courant à aujourd'hui |
 | Aucune période précisée | 30 derniers jours, indiqués dans la réponse |
 
-L'assistant précise toujours la période réellement utilisée. Les données de démonstration sont générées **relativement à la date du jour** (par exemple « il y a 0 à 45 jours »), pour que ces questions renvoient toujours des résultats. La base est recréée par le script de seed et n'est jamais commitée.
+L'assistant précise toujours la période réellement utilisée. Les données de démonstration sont générées **relativement à la date du jour** (par exemple « il y a 0 à 45 jours »), pour que ces questions renvoient toujours des résultats. Le seed ajoute ou met à jour les données de démonstration sans effacer toute la base ; ne jamais commiter d'export de base ni de données réelles.
 
 ### 6.4 Assistant en créole
 
@@ -211,7 +211,7 @@ Les mots français courants (« dépenses », « résume », « plus vendus ») 
 
 **Si un modèle de langage est utilisé :** l'instruction système exige une réponse en créole haïtien, interdit d'ajouter tout chiffre absent des données fournies et interdit de répondre aux sujets hors gestion de la boutique. La qualité de son créole doit être évaluée avant la démo ; en cas de doute, la démo utilise les modèles de secours.
 
-**Simulateur de canal :** `POST /api/v1/channels/simulate` reçoit `{ "phone": "...", "text": "..." }` et renvoie ce que le bot enverrait. Il sert aux tests automatiques, au développement sans internet et de plan B pour la démo.
+**Simulateur de canal :** `POST /api/v1/channels/simulate` reçoit `{ "phone": "...", "text": "..." }` et renvoie ce que le bot enverrait. Il sert aux tests automatiques et de plan B si une API de messagerie est indisponible ; le backend doit toujours avoir accès à Supabase.
 
 ### 6.5 Canaux de messagerie
 
@@ -265,9 +265,9 @@ Règles de la saisie par message : correspondance prudente du produit (en cas de
 #### Plan de secours des canaux
 
 1. WhatsApp ne fonctionne pas → même scénario sur **Telegram**.
-2. Pas d'internet → même scénario avec le **simulateur de canal** et l'interface web, en mode de secours local.
+2. Une API de messagerie est indisponible → utiliser le simulateur de canal et l'interface web, à condition que le backend puisse toujours joindre Supabase.
 
-Les canaux de messagerie ont besoin d'internet. Le mode hors ligne couvre l'interface web, le calcul et l'assistant de secours, pas l'envoi réel de messages.
+Supabase, le backend hébergé et les canaux de messagerie ont besoin d'internet. Le mode de secours évite une dépendance à une API IA externe ou à un fournisseur de messagerie, mais ne permet pas de travailler sans accès à Supabase.
 
 ## 7. Fonctionnalités du MVP
 
@@ -332,7 +332,7 @@ business-core/
 │   ├── app/
 │   │   ├── main.py              # app FastAPI, CORS, routes, démarrage du planificateur
 │   │   ├── config.py            # paramètres (pydantic-settings)
-│   │   ├── database.py          # moteur et sessions SQLAlchemy
+│   │   ├── database.py          # moteur PostgreSQL et sessions SQLAlchemy
 │   │   ├── models.py            # Product, Sale, Expense, Contact, PendingAction
 │   │   ├── schemas.py           # schémas Pydantic
 │   │   ├── routes/
@@ -365,6 +365,7 @@ business-core/
 │   │   │   └── simulator.py
 │   │   ├── scheduler.py         # rapports quotidiens/hebdo, alertes de stock
 │   │   └── seed.py              # données de démo relatives à la date du jour
+│   ├── migrations/              # migrations Alembic du schéma PostgreSQL
 │   └── tests/
 │       ├── conftest.py
 │       ├── test_sales.py        # priorité : cohérence du stock
@@ -409,7 +410,7 @@ Préfixe : `/api/v1` (sauf `/health`).
 | GET, POST | `/api/v1/contacts` | Lister / ajouter un numéro autorisé |
 | GET, POST | `/api/v1/channels/whatsapp/webhook` | Vérification du webhook (GET) et messages entrants (POST) |
 | POST | `/api/v1/channels/telegram/webhook` | Messages entrants Telegram (si webhook) |
-| POST | `/api/v1/channels/simulate` | Simuler un message entrant (tests, démo hors ligne) |
+| POST | `/api/v1/channels/simulate` | Simuler un message entrant (tests, démo sans API de messagerie) |
 | POST | `/api/v1/reports/send-now` | Déclencher un rapport ou une alerte (démo) |
 
 **À faire en premier :** figer les formats JSON dans `docs/api-endpoints.md` pour que frontend et backend avancent en parallèle.
@@ -423,7 +424,7 @@ Préfixe : `/api/v1` (sauf `/health`).
 
 ### Développeur 1 : backend, données, canaux
 
-- FastAPI, SQLAlchemy, SQLite, modèles, schémas, routes.
+- FastAPI, SQLAlchemy, PostgreSQL sur Supabase, modèles, schémas, routes.
 - Règles de ventes, dépenses, stock et périodes (section 6).
 - Seed relatif à la date du jour.
 - Webhooks, contacts, vérification des signatures, planificateur de rapports et d'alertes.
@@ -460,6 +461,7 @@ Utiliser Python 3.11 ou 3.12 et une version LTS de Node.js. Sous Windows, la com
 
 Pour les canaux :
 
+- **Supabase :** créer un projet pour le développement, choisir une région proche des utilisateurs et récupérer l'URL de connexion PostgreSQL dans les paramètres de base de données. Utiliser un projet séparé pour les tests si possible.
 - **Telegram :** créer un bot via BotFather et noter son jeton (ne jamais le commiter).
 - **WhatsApp :** créer une application développeur Meta et un compte WhatsApp Business, récupérer le jeton de test et ajouter les numéros de test autorisés. Pour recevoir les webhooks en local, il faut une URL publique temporaire (par exemple via un outil de tunnel comme ngrok). Prévoir ce temps de configuration tôt dans le plan.
 
@@ -487,12 +489,16 @@ python -m pip install --upgrade pip
 
 Si PowerShell bloque l'activation, utiliser l'invite de commandes et `.\.venv\Scripts\activate.bat`.
 
+Créer un projet Supabase et définir `DATABASE_URL` dans `backend/.env` avec l'URL PostgreSQL du projet. Pour l'application FastAPI, privilégier la chaîne de connexion PostgreSQL du pooler Supabase en mode session ; encoder le mot de passe conformément au format d'URL. Ne jamais utiliser cette chaîne dans le frontend.
+
 `backend/requirements.txt` :
 
 ```text
 fastapi
 uvicorn[standard]
 sqlalchemy
+psycopg[binary]
+alembic
 pydantic-settings
 python-dotenv
 httpx
@@ -500,7 +506,17 @@ apscheduler
 pytest
 ```
 
-Installer puis démarrer (après avoir créé `app/main.py`) :
+Initialiser Alembic une seule fois, puis configurer `migrations/env.py` pour charger les modèles et `DATABASE_URL`. Après chaque changement de schéma, créer et appliquer la migration avant le seed :
+
+```bash
+alembic init migrations
+alembic revision --autogenerate -m "schema initial"
+alembic upgrade head
+```
+
+Ne pas recréer ni vider automatiquement la base au démarrage de l'API.
+
+Installer puis démarrer (après avoir créé `app/main.py` et configuré la connexion Supabase) :
 
 ```bash
 pip install -r requirements.txt
@@ -567,9 +583,6 @@ venv/
 !.env.example
 node_modules/
 dist/
-*.db
-*.sqlite
-*.sqlite3
 .vscode/
 .DS_Store
 Thumbs.db
@@ -580,7 +593,7 @@ Thumbs.db
 ```env
 APP_NAME=Business Core API
 APP_ENV=development
-DATABASE_URL=sqlite:///./business_core.db
+DATABASE_URL=postgresql+psycopg://postgres.[PROJECT-REF]:[PASSWORD]@[POOLER-HOST]:5432/postgres
 FRONTEND_ORIGIN=http://localhost:5173
 
 AI_PROVIDER=mock
@@ -599,6 +612,8 @@ REPORT_TIMEZONE=America/Port-au-Prince
 ```
 
 `AI_PROVIDER=mock` active le mode de secours sans modèle distant. `CHANNELS_ENABLED` accepte une liste (`simulator`, `telegram`, `whatsapp`). Aucune de ces valeurs secrètes ne doit apparaître dans le dépôt.
+
+`DATABASE_URL` contient les identifiants PostgreSQL Supabase : le garder uniquement dans `backend/.env` ou dans le gestionnaire de secrets de l'hébergeur. FastAPI accède aux tables via SQLAlchemy ; le frontend ne reçoit ni cette URL ni une clé `service_role`. Le backend valide les autorisations et les entrées. Ne pas activer de politiques RLS qui bloqueraient le compte PostgreSQL utilisé par FastAPI sans avoir défini et testé le contexte d'autorisation correspondant. Le schéma doit être créé avant le seed ; exécuter le seed de démonstration uniquement sur le projet prévu et ne pas supprimer les tables ou données partagées.
 
 ### `frontend/.env.example`
 
@@ -630,7 +645,7 @@ git add .
 git commit -m "Initialisation de Business Core"
 ```
 
-Ne jamais commiter `.env`, les jetons, les clés API, ni la base de données.
+Ne jamais commiter `.env`, les jetons, les clés API, les identifiants de connexion Supabase ni un export de la base de données.
 
 ## 16. Scénario de démonstration (à figer tôt)
 
@@ -642,7 +657,7 @@ Durée cible : 4 minutes. Une seule boucle, répétée plusieurs fois, **racont�
 4. **Vente et stock (40 s) :** enregistrer une vente (par le web, ou par message avec confirmation si le bonus est prêt). Le stock baisse et le produit passe en alerte.
 5. **Tableau de bord (30 s) :** montrer que les chiffres du web correspondent à ceux reçus par message.
 6. **Fiabilité (20 s) :** poser une question hors périmètre pour montrer le message clair en créole ; préciser que les chiffres viennent du backend, pas de l'IA.
-7. **Plan de secours (10 s) :** expliquer le mode de secours local et le simulateur de canal.
+7. **Plan de secours (10 s) :** expliquer le mode sans API IA et le simulateur de canal ; Supabase reste nécessaire.
 8. **Limites et suite (20 s) :** ce que le prototype ne fait pas ; feuille de route (SMS/USSD, notes vocales, mobile money).
 
 Le détail exact (questions, réponses attendues, ordre) est consigné dans `docs/demo-script.md`.
@@ -650,7 +665,7 @@ Le détail exact (questions, réponses attendues, ordre) est consigné dans `doc
 ## 17. Tests avant la démo
 
 - [ ] Le backend démarre sans erreur ; le frontend démarre et communique avec lui.
-- [ ] La base et les données de démonstration s'initialisent, avec des dates relatives à aujourd'hui.
+- [ ] Le backend se connecte au projet Supabase prévu ; le schéma et les données de démonstration sont prêts, avec des dates relatives à aujourd'hui.
 - [ ] Les chiffres du tableau de bord correspondent aux données de test.
 - [ ] Une vente met à jour le stock correctement, dans une seule transaction.
 - [ ] Une vente avec stock insuffisant ou quantité invalide est refusée avec un message créole clair.
@@ -663,13 +678,13 @@ Le détail exact (questions, réponses attendues, ordre) est consigné dans `doc
 - [ ] Le rapport quotidien et l'alerte de stock partent, via `reports/send-now` et via le planificateur.
 - [ ] (Bonus) La saisie par message demande confirmation, expire après le délai, et n'enregistre rien sans « wi ».
 - [ ] Les textes créoles ont été relus par un locuteur natif.
-- [ ] Le scénario complet a été répété avec WhatsApp, avec Telegram, et avec le simulateur hors ligne.
+- [ ] Le scénario complet a été répété avec WhatsApp, avec Telegram et avec le simulateur (backend connecté à Supabase).
 
 ## 18. Plan de travail sur 48 heures
 
 | Phase | Contenu | Repère |
 |---|---|---|
-| 1. Cadrage | Boutique fictive, produits en créole, questions, formats JSON, scénario de démo, comptes Telegram/Meta à créer | Heures 0–3 |
+| 1. Cadrage | Boutique fictive, produits en créole, questions, formats JSON, scénario de démo, projet Supabase et comptes Telegram/Meta à créer | Heures 0–3 |
 | 2. Base technique | Backend et frontend démarrent, `/health`, CORS ; **bot Telegram qui répond « bonjour »** | Heures 3–8 |
 | 3. Fonctions métier | Produits, ventes + stock, dépenses, périodes, indicateurs, seed | Heures 8–20 |
 | 4. Interface | Tableau de bord et formulaires en créole (`ht.ts`) | Heures 14–28 |
@@ -684,6 +699,8 @@ Règle d'or : **si une fonctionnalité n'est pas utilisée dans le scénario de 
 
 - Utiliser des données fictives et des numéros de test ; aucun vrai client dans la démo.
 - Secrets (jetons, clés) uniquement dans les variables d'environnement ; ne jamais les exposer au frontend ni les commiter.
+- Protéger `DATABASE_URL` comme un secret ; utiliser un projet Supabase de test et des données fictives, et ne jamais exposer d'identifiants PostgreSQL ou de clé `service_role` au frontend.
+- Garder les opérations vente + mise à jour du stock dans une transaction PostgreSQL ; tester les contraintes et la concurrence sur la base de test.
 - **N'envoyer d'information qu'aux numéros enregistrés** (liste blanche).
 - **Vérifier l'authenticité des webhooks** (signature de Meta pour WhatsApp, jeton secret pour Telegram) avant tout traitement.
 - Limiter le nombre de messages par numéro et par minute.
@@ -713,7 +730,7 @@ Règle d'or : **si une fonctionnalité n'est pas utilisée dans le scénario de 
 
 ## 21. Priorités immédiates
 
-1. Créer le dépôt avec `backend/` et `frontend/`.
+1. Créer le projet Supabase et le dépôt avec `backend/` et `frontend/`.
 2. Figer les formats JSON, les règles de la section 6, la liste des mots-clés créoles et le scénario de démo.
 3. Créer le bot Telegram et le compte développeur Meta (la configuration WhatsApp prend du temps).
 4. Faire démarrer FastAPI avec `/health` et un premier message échangé avec le bot.
@@ -726,6 +743,7 @@ Règle d'or : **si une fonctionnalité n'est pas utilisée dans le scénario de 
 
 ## Annexe : ce qui a changé par rapport à la v3
 
+- **Base de données :** remplacement de SQLite par PostgreSQL hébergé sur Supabase, tout en conservant FastAPI et SQLAlchemy comme backend et couche d'accès aux données.
 - **Créole partout côté utilisateur :** interface, assistant, messages, démo et pitch, avec fichiers de textes centralisés pour la relecture.
 - **Nouveau cœur de produit :** l'information vient au commerçant par WhatsApp (Telegram en secours), sans passer par la plateforme.
 - **Rapports et alertes automatiques :** résumé quotidien et hebdomadaire, alerte de stock bas, rappel d'inactivité.
