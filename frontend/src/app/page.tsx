@@ -1,5 +1,8 @@
 
 import Image from "next/image";
+import Link from "next/link";
+
+import AuthControls from "./AuthControls";
 
 const features = [
   {
@@ -57,19 +60,14 @@ export default function Home() {
       {/* NAVIGATION */}
       <header className="bg-white">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
-          <a href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#123BFF] text-lg font-bold text-white">
               BC
             </span>
             <span className="text-xl font-bold">Business Core</span>
-          </a>
+          </Link>
 
-          <a
-            href="/inscription"
-            className="rounded-lg bg-[#123BFF] px-5 py-3 text-sm font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-800"
-          >
-            Rejwenn Business Core
-          </a>
+          <AuthControls />
         </nav>
       </header>
 
@@ -95,12 +93,12 @@ export default function Home() {
             </p>
 
             <div className="mt-9 flex flex-wrap gap-4">
-              <a
+              <Link
                 href="/inscription"
                 className="rounded-lg bg-white px-7 py-4 font-bold text-[#123BFF] transition hover:bg-blue-50"
               >
                 Rejwenn Business Core
-              </a>
+              </Link>
 
               <a
                 href="#fonksyonalite"
@@ -329,12 +327,12 @@ export default function Home() {
             epi jwenn enfòmasyon ou bezwen yo.
           </p>
 
-          <a
+          <Link
             href="/inscription"
             className="mt-8 inline-block rounded-lg bg-white px-8 py-4 font-bold text-[#123BFF] transition hover:bg-blue-50"
           >
             Rejwenn Business Core
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -404,9 +402,9 @@ export default function Home() {
 
             <ul className="mt-5 space-y-3 text-sm text-blue-100">
               <li>
-                <a href="/" className="transition hover:text-white">
+                <Link href="/" className="transition hover:text-white">
                   Akèy
-                </a>
+                </Link>
               </li>
 
               <li>
@@ -428,12 +426,12 @@ export default function Home() {
               </li>
 
               <li>
-                <a
+                <Link
                   href="/inscription"
                   className="transition hover:text-white"
                 >
                   Kreye yon kont
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -455,12 +453,12 @@ export default function Home() {
             </a>
 
             <div className="mt-6">
-              <a
+              <Link
                 href="/inscription"
                 className="inline-block rounded-lg bg-white px-5 py-3 text-sm font-bold text-[#123BFF] transition hover:bg-blue-50"
               >
                 Rejwenn Business Core
-              </a>
+              </Link>
             </div>
           </div>
         </div>

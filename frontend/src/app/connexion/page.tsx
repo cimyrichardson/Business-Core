@@ -3,19 +3,36 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { getAuthErrorMessage, getSupabaseClient } from "@/lib/supabase";
 
 export default function Connexion() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [erreur, setErreur] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErreur("");
 
-    setErreur(
-      "Koneksyon an poko disponib. Sistèm nan bezwen konekte ak backend la."
-    );
+    setIsSubmitting(true);
+    try {
+      const { error } = await getSupabaseClient().auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) throw error;
+      router.replace("/dashboard");
+    } catch (cause) {
+      setErreur(getAuthErrorMessage(cause, "login"));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -25,7 +42,7 @@ export default function Connexion() {
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
 
-          <a href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#123BFF] text-lg font-bold text-white">
               BC
             </span>
@@ -33,14 +50,14 @@ export default function Connexion() {
             <span className="text-xl font-bold">
               Business Core
             </span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/inscription"
             className="rounded-lg border border-[#123BFF] px-5 py-3 text-sm font-semibold text-[#123BFF] transition hover:bg-blue-50"
           >
             Kreye kont
-          </a>
+          </Link>
 
         </nav>
       </header>
@@ -99,17 +116,17 @@ export default function Connexion() {
               </div>
 
               <div className="text-right">
-                <a
+                <Link
                   href="/mot-de-passe-oublie"
                   className="text-sm font-semibold text-[#123BFF] hover:underline"
                 >
                   Ou bliye modpas ou?
-                </a>
+                </Link>
               </div>
 
               {/* MESAJ */}
               {erreur && (
-                <p className="rounded-lg bg-blue-50 p-3 text-sm text-[#123BFF]">
+                <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
                   {erreur}
                 </p>
               )}
@@ -117,9 +134,10 @@ export default function Connexion() {
               {/* BOUTON */}
               <button
                 type="submit"
-                className="w-full rounded-lg bg-[#123BFF] py-3.5 font-bold text-white transition hover:bg-blue-800"
+                disabled={isSubmitting}
+                className="w-full rounded-lg bg-[#123BFF] py-3.5 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Konekte
+                {isSubmitting ? "Ap konekte..." : "Konekte"}
               </button>
 
             </form>
@@ -129,12 +147,12 @@ export default function Connexion() {
                 Ou poko gen kont?
               </p>
 
-              <a
+              <Link
                 href="/inscription"
                 className="mt-2 inline-block font-bold text-[#123BFF] hover:underline"
               >
                 Kreye yon kont Business Core
-              </a>
+              </Link>
             </div>
 
           </div>

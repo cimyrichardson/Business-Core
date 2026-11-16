@@ -3,25 +3,62 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { getAuthErrorMessage, getSupabaseClient } from "@/lib/supabase";
 
 export default function Inscription() {
+  const router = useRouter();
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [business, setBusiness] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [erreur, setErreur] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErreur("");
+    setMessage("");
 
     if (password !== confirmation) {
       setErreur("Modpas yo pa menm. Tanpri verifye yo.");
       return;
     }
 
-    setErreur("Enskripsyon an poko konekte ak sistèm nan.");
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await getSupabaseClient().auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: nom.trim(),
+            business_name: business.trim(),
+          },
+          emailRedirectTo: `${window.location.origin}/connexion`,
+        },
+      });
+
+      if (error) throw error;
+      if (data.session) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      setMessage(
+        "Kont lan kreye. Tcheke imèl ou pou konfime adrès la anvan ou konekte.",
+      );
+      setPassword("");
+      setConfirmation("");
+    } catch (cause) {
+      setErreur(getAuthErrorMessage(cause, "signup"));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -31,7 +68,7 @@ export default function Inscription() {
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
 
-          <a href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#123BFF] text-lg font-bold text-white">
               BC
             </span>
@@ -39,14 +76,14 @@ export default function Inscription() {
             <span className="text-xl font-bold">
               Business Core
             </span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/"
             className="rounded-lg border border-[#123BFF] px-5 py-3 text-sm font-semibold text-[#123BFF] transition hover:bg-blue-50"
           >
             Akèy
-          </a>
+          </Link>
 
         </nav>
       </header>
@@ -157,28 +194,34 @@ export default function Inscription() {
               </div>
 
               {erreur && (
-                <p className="rounded-lg bg-blue-50 p-3 text-sm text-[#123BFF]">
+                <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
                   {erreur}
+                </p>
+              )}
+              {message && (
+                <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">
+                  {message}
                 </p>
               )}
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-[#123BFF] py-3.5 font-bold text-white transition hover:bg-blue-800"
+                disabled={isSubmitting}
+                className="w-full rounded-lg bg-[#123BFF] py-3.5 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Kreye kont mwen
+                {isSubmitting ? "Ap kreye kont la..." : "Kreye kont mwen"}
               </button>
 
             </form>
 
             <p className="mt-7 text-center text-sm text-gray-500">
               Ou deja gen yon kont?{" "}
-              <a
+              <Link
                 href="/connexion"
                 className="font-bold text-[#123BFF] hover:underline"
               >
                 Konekte
-              </a>
+              </Link>
             </p>
 
           </div>
