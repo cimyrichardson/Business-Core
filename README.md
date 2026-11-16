@@ -18,8 +18,48 @@ de se connecter.
 La clé publishable est prévue pour le navigateur. Ne mettez jamais une clé
 `service_role` ou un mot de passe de base de données dans `NEXT_PUBLIC_*`.
 Après connexion, l'utilisateur arrive sur `/dashboard`; cette route vérifie la
-session Supabase. Les indicateurs restent vides tant que l'API métier n'est
-pas disponible, afin de ne pas afficher de chiffres fictifs.
+session Supabase. Le frontend envoie le jeton Supabase à l'API FastAPI pour
+charger les indicateurs, produits, ventes et dépenses.
+
+## API métier FastAPI
+
+L'API est dans `backend/`. Elle vérifie les jetons auprès de Supabase Auth et
+utilise la connexion PostgreSQL uniquement côté serveur. Les endpoints métier
+exigent un jeton `Bearer`; `/health` reste public.
+
+1. Appliquez d'abord la migration Supabase décrite ci-dessous.
+2. Depuis PowerShell, créez l'environnement et installez les dépendances :
+
+   ```powershell
+   Set-Location backend
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install -r requirements.txt
+   Copy-Item .env.example .env
+   ```
+
+3. Dans `backend/.env`, renseignez `DATABASE_URL` avec la chaîne PostgreSQL
+   Supabase, ainsi que `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` (copiez la
+   clé publishable de `frontend/.env.local`). La chaîne de base de données
+   contient un secret : gardez-la uniquement dans ce fichier ignoré par Git ou
+   dans le gestionnaire de secrets de l'hébergeur.
+4. Ajoutez `NEXT_PUBLIC_API_URL=http://localhost:8000` dans
+   `frontend/.env.local`; cette URL n'est pas un secret.
+5. Depuis `backend/`, démarrez l'API :
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+6. Vérifiez `http://localhost:8000/health`, puis ouvrez
+   `http://localhost:8000/docs` pour la documentation OpenAPI.
+
+Les endpoints sont répertoriés dans
+[`docs/api-endpoints.md`](./docs/api-endpoints.md). Les opérations produits,
+ventes et dépenses sont limitées à la boutique associée au compte Supabase.
+Une vente utilise le prix enregistré du produit; le backend calcule le total
+et la migration PostgreSQL retire la quantité vendue du stock dans la même
+transaction.
 
 ## Migration de la base
 
@@ -34,4 +74,5 @@ les tables nécessaires au MVP, relie chaque nouvel utilisateur à son profil et
 Les tables métier ont RLS activé sans politiques d'accès direct pour
 `anon`/`authenticated` : le navigateur utilise Supabase Auth, tandis que les
 données métier passent par FastAPI avec une connexion PostgreSQL gardée côté
-serveur.
+serveur. L'API vérifie le jeton Supabase et ajoute l'identifiant de boutique
+aux requêtes; ne publiez jamais `DATABASE_URL` ni une clé `service_role`.

@@ -1,49 +1,89 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import {
+  getDashboardSummary,
+  type DashboardSummary,
+  type PeriodKey,
+} from "@/lib/business-api";
+import { formatBusinessDate, formatHTG } from "@/lib/business-format";
 import { useWorkspaceUser } from "../WorkspaceShell";
 
-type Period = "7days" | "month" | "30days";
-
-const periods: { key: Period; label: string }[] = [
+const periods: { key: PeriodKey; label: string }[] = [
   { key: "7days", label: "7 dènye jou" },
   { key: "month", label: "Mwa sa a" },
   { key: "30days", label: "30 dènye jou" },
 ];
 
-const metrics = [
-  { label: "Chif dafè", icon: "↗", tone: "text-emerald-800 bg-emerald-100" },
-  { label: "Total depans", icon: "↘", tone: "text-amber-800 bg-amber-100" },
-  { label: "Kantite vant", icon: "≡", tone: "text-teal-800 bg-teal-100" },
-  { label: "Stòk ki ba", icon: "!", tone: "text-orange-800 bg-orange-100" },
-];
-
-function getPeriodRange(period: Period): string {
-  const end = new Date();
-  const start = new Date(end);
-
-  if (period === "7days") start.setDate(start.getDate() - 6);
-  if (period === "30days") start.setDate(start.getDate() - 29);
-  if (period === "month") start.setDate(1);
-
-  const formatDate = (date: Date) =>
-    new Intl.DateTimeFormat("fr-HT", {
-      day: "2-digit",
-      month: "short",
-    }).format(date);
-
-  return `${formatDate(start)} – ${formatDate(end)}`;
-}
-
 export default function DashboardContent() {
   const user = useWorkspaceUser();
-  const [period, setPeriod] = useState<Period>("7days");
+  const [period, setPeriod] = useState<PeriodKey>("7days");
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+
   const fullName = user.user_metadata.full_name;
   const greetingName =
     typeof fullName === "string" && fullName.trim()
       ? fullName
       : user.email ?? "Itilizatè";
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void getDashboardSummary(period, controller.signal)
+      .then((result) => setSummary(result))
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Nou pa ka chaje tablo biznis la.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [period, reloadKey]);
+
+  const periodRange = summary
+    ? `${formatBusinessDate(summary.start_date)} – ${formatBusinessDate(summary.end_date)}`
+    : "";
+  const metrics = [
+    {
+      label: "Chif dafè",
+      value: summary ? formatHTG(summary.revenue_htg) : "—",
+      icon: "↗",
+      tone: "text-emerald-800 bg-emerald-100",
+    },
+    {
+      label: "Total depans",
+      value: summary ? formatHTG(summary.expenses_total_htg) : "—",
+      icon: "↘",
+      tone: "text-amber-800 bg-amber-100",
+    },
+    {
+      label: "Kantite vant",
+      value: summary ? String(summary.sales_count) : "—",
+      icon: "≡",
+      tone: "text-teal-800 bg-teal-100",
+    },
+    {
+      label: "Stòk ki ba",
+      value: summary ? String(summary.low_stock_count) : "—",
+      icon: "!",
+      tone: "text-orange-800 bg-orange-100",
+    },
+  ];
+  const maxTopQuantity = Math.max(
+    1,
+    ...(summary?.top_products.map((product) => product.quantity) ?? []),
+  );
 
   return (
     <>
@@ -68,12 +108,14 @@ export default function DashboardContent() {
               key={option.key}
               type="button"
               aria-pressed={period === option.key}
-              onClick={() => setPeriod(option.key)}
-              className={`workspace-period-button whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition sm:text-sm ${
-                period === option.key
-                  ? "bg-[#245c4b] text-white"
-                  : "text-gray-600 hover:bg-blue-50"
-              }`}
+              onClick={() => {
+                if (period === option.key) return;
+                setSummary(null);
+                setError("");
+                setIsLoading(true);
+                setPeriod(option.key);
+              }}
+              className="workspace-period-button whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition sm:text-sm"
             >
               {option.label}
             </button>
@@ -81,17 +123,38 @@ export default function DashboardContent() {
         </div>
       </section>
 
-      <p className="workspace-muted mt-5 text-sm">{getPeriodRange(period)}</p>
+      <p className="workspace-muted mt-5 text-sm" aria-live="polite">
+        {periodRange || "Ap chaje peryòd la..."}
+      </p>
+
+      {error && (
+        <div
+          role="alert"
+          className="workspace-api-error mt-4 flex flex-wrap items-center justify-between gap-3"
+        >
+          <p>{error}</p>
+          <button
+            type="button"
+            className="workspace-retry-button"
+            onClick={() => {
+              setSummary(null);
+              setError("");
+              setIsLoading(true);
+              setReloadKey((key) => key + 1);
+            }}
+          >
+            Eseye ankò
+          </button>
+        </div>
+      )}
 
       <section
         aria-label="Endikatè biznis"
+        aria-busy={isLoading}
         className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
         {metrics.map((metric) => (
-          <article
-            key={metric.label}
-            className="workspace-card p-5 shadow-sm"
-          >
+          <article key={metric.label} className="workspace-card p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="workspace-muted text-sm font-semibold">
                 {metric.label}
@@ -103,9 +166,8 @@ export default function DashboardContent() {
                 {metric.icon}
               </span>
             </div>
-            <p className="mt-4 text-3xl font-bold">—</p>
-            <p className="workspace-muted mt-2 text-xs">
-              Done yo ap parèt lè API biznis la konekte.
+            <p className="mt-4 text-3xl font-bold">
+              {isLoading ? "…" : metric.value}
             </p>
           </article>
         ))}
@@ -119,26 +181,55 @@ export default function DashboardContent() {
         <article className="workspace-card p-5 shadow-sm lg:col-span-3 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h3 className="text-lg font-bold">Vant sou peryòd la</h3>
+              <h3 className="text-lg font-bold">Pwodwi ki vann pi plis</h3>
               <p className="workspace-muted mt-1 text-sm">
-                {getPeriodRange(period)}
+                {periodRange || "Peryòd la"}
               </p>
             </div>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
               HTG
             </span>
           </div>
-          <div className="workspace-empty mt-5 flex min-h-64 items-center justify-center px-6 text-center">
-            <p className="max-w-sm text-sm leading-6">
-              Pa gen done lavant pou montre kounye a. Konekte API biznis la pou
-              wè graf lavant yo.
-            </p>
+          <div className="mt-5">
+            {isLoading ? (
+              <p className="workspace-empty px-5 py-8 text-center text-sm">
+                Ap chaje lavant yo...
+              </p>
+            ) : summary?.top_products.length ? (
+              <ul className="divide-y">
+                {summary.top_products.map((product) => (
+                  <li key={product.product_id} className="py-3">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold">{product.name}</span>
+                      <span className="workspace-muted shrink-0">
+                        {product.quantity} vann
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-[#e6ede2]">
+                      <div
+                        className="h-full rounded-full bg-[#47745b]"
+                        style={{
+                          width: `${Math.max(4, (product.quantity / maxTopQuantity) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="workspace-muted mt-1 text-xs">
+                      {formatHTG(product.revenue_htg)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="workspace-empty px-5 py-8 text-center text-sm">
+                Pa gen vant pou peryòd sa a.
+              </p>
+            )}
           </div>
         </article>
 
         <article className="workspace-card p-5 shadow-sm lg:col-span-2 sm:p-6">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 font-bold text-orange-700">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 font-bold text-orange-800">
               !
             </span>
             <div>
@@ -146,11 +237,29 @@ export default function DashboardContent() {
               <p className="workspace-muted text-sm">Alèt stock ba</p>
             </div>
           </div>
-          <div className="workspace-empty mt-5 px-5 py-8 text-center">
-            <p className="text-sm">
-              Lis pwodwi yo ap parèt lè API biznis la konekte.
-            </p>
-          </div>
+          <ul className="mt-5 divide-y">
+            {isLoading ? (
+              <li className="workspace-empty px-5 py-8 text-center text-sm">
+                Ap chaje stòk la...
+              </li>
+            ) : summary?.low_stock_products.length ? (
+              summary.low_stock_products.map((product) => (
+                <li
+                  key={product.id}
+                  className="flex items-center justify-between gap-3 py-3 text-sm"
+                >
+                  <span className="font-semibold">{product.name}</span>
+                  <span className="shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-900">
+                    {product.stock_quantity} rete / min {product.min_stock_quantity}
+                  </span>
+                </li>
+              ))
+            ) : (
+              <li className="workspace-empty px-5 py-8 text-center text-sm">
+                Tout stòk yo bon.
+              </li>
+            )}
+          </ul>
         </article>
       </section>
 
@@ -160,8 +269,8 @@ export default function DashboardContent() {
           Tout biznis ou nan yon sèl espas.
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 opacity-80">
-          Chif lavant, depans ak stock yo ap disponib lè koneksyon ak API biznis
-          la fini.
+          Rezime sa a soti nan lavant, depans ak pwodwi ki anrejistre pou
+          biznis ou.
         </p>
       </section>
     </>
