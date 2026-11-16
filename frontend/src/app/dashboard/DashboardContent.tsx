@@ -13,10 +13,10 @@ const periods: { key: Period; label: string }[] = [
 ];
 
 const metrics = [
-  { label: "Chif dafè", icon: "↗", tone: "text-blue-700 bg-blue-50" },
-  { label: "Total depans", icon: "↘", tone: "text-orange-700 bg-orange-50" },
-  { label: "Kantite vant", icon: "≡", tone: "text-indigo-700 bg-indigo-50" },
-  { label: "Stòk ki ba", icon: "!", tone: "text-red-700 bg-red-50" },
+  { label: "Chif dafè", icon: "↗", tone: "text-emerald-800 bg-emerald-100" },
+  { label: "Total depans", icon: "↘", tone: "text-amber-800 bg-amber-100" },
+  { label: "Kantite vant", icon: "≡", tone: "text-teal-800 bg-teal-100" },
+  { label: "Stòk ki ba", icon: "!", tone: "text-orange-800 bg-orange-100" },
 ];
 
 function getPeriodRange(period: Period): string {
@@ -49,7 +49,7 @@ export default function DashboardContent() {
     <>
       <section className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div>
-          <p className="text-sm font-semibold text-[#123BFF]">Tablo bò</p>
+          <p className="workspace-section-kicker">Tablo bò</p>
           <h2 className="mt-2 text-3xl font-bold sm:text-4xl">
             Bonjou, {greetingName}
           </h2>
@@ -71,7 +71,7 @@ export default function DashboardContent() {
               onClick={() => setPeriod(option.key)}
               className={`workspace-period-button whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition sm:text-sm ${
                 period === option.key
-                  ? "bg-[#123BFF] text-white"
+                  ? "bg-[#245c4b] text-white"
                   : "text-gray-600 hover:bg-blue-50"
               }`}
             >
@@ -124,7 +124,7 @@ export default function DashboardContent() {
                 {getPeriodRange(period)}
               </p>
             </div>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#123BFF]">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
               HTG
             </span>
           </div>
@@ -154,12 +154,12 @@ export default function DashboardContent() {
         </article>
       </section>
 
-      <section className="mt-7 rounded-2xl bg-[#123BFF] p-6 text-white sm:p-8">
-        <p className="text-sm font-semibold text-blue-100">Business Core</p>
+      <section className="workspace-dashboard-cta mt-7 rounded-2xl p-6 sm:p-8">
+        <p className="text-sm font-semibold opacity-80">Business Core</p>
         <h2 className="mt-2 text-2xl font-bold">
           Tout biznis ou nan yon sèl espas.
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
+        <p className="mt-2 max-w-2xl text-sm leading-6 opacity-80">
           Chif lavant, depans ak stock yo ap disponib lè koneksyon ak API biznis
           la fini.
         </p>

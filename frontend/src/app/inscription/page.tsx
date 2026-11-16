@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -62,176 +61,139 @@ export default function Inscription() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F5F7FF] text-[#172554]">
-
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-
-          <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#123BFF] text-lg font-bold text-white">
-              BC
+    <main className="auth-page">
+      <header className="auth-header">
+        <nav className="auth-nav" aria-label="Navigasyon prensipal">
+          <Link href="/" className="landing-brand">
+            <span className="landing-brand-mark" aria-hidden="true">
+              bc
             </span>
-
-            <span className="text-xl font-bold">
-              Business Core
-            </span>
+            <span>Business Core</span>
           </Link>
-
-          <Link
-            href="/"
-            className="rounded-lg border border-[#123BFF] px-5 py-3 text-sm font-semibold text-[#123BFF] transition hover:bg-blue-50"
-          >
+          <Link href="/" className="auth-nav-action">
             Akèy
           </Link>
-
         </nav>
       </header>
 
-      {/* FORMULAIRE */}
-      <section className="px-5 py-12 sm:py-16">
+      <section className="auth-content">
+        <div className="auth-heading">
+          <p className="landing-kicker landing-kicker-dark">Kòmanse isit la</p>
+          <h1>Kreye espas biznis ou.</h1>
+          <p>Antre enfòmasyon w yo pou kòmanse mete aktivite w annòd.</p>
+        </div>
 
-        <div className="mx-auto max-w-md">
+        <div className="auth-panel">
+          <form onSubmit={handleSubmit}>
+            <div className="auth-field">
+              <label htmlFor="signup-name">Non konplè</label>
+              <input
+                id="signup-name"
+                type="text"
+                value={nom}
+                onChange={(e) => setNom(e.target.value)}
+                placeholder="Antre non konplè ou"
+                required
+                autoComplete="name"
+              />
+            </div>
 
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold sm:text-4xl">
-              Kreye kont ou
-            </h1>
+            <div className="auth-field">
+              <label htmlFor="signup-email">Imèl</label>
+              <input
+                id="signup-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="non@biznis.com"
+                required
+                autoComplete="email"
+              />
+            </div>
 
-            <p className="mt-3 text-sm leading-6 text-gray-500">
-              Kòmanse òganize aktivite biznis ou avèk Business Core.
-            </p>
-          </div>
+            <div className="auth-field">
+              <label htmlFor="signup-business">Non biznis la</label>
+              <input
+                id="signup-business"
+                type="text"
+                value={business}
+                onChange={(e) => setBusiness(e.target.value)}
+                placeholder="Antre non biznis ou"
+                required
+                autoComplete="organization"
+              />
+            </div>
 
-          <div className="rounded-2xl bg-white p-7 shadow-lg shadow-blue-900/5 sm:p-9">
+            <div className="auth-field">
+              <label htmlFor="signup-password">Modpas</label>
+              <input
+                id="signup-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Chwazi yon modpas"
+                minLength={8}
+                required
+                autoComplete="new-password"
+              />
+              <p className="auth-hint">Omwen 8 karaktè.</p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="auth-field">
+              <label htmlFor="signup-confirm">Konfime modpas</label>
+              <input
+                id="signup-confirm"
+                type="password"
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+                placeholder="Antre modpas la ankò"
+                minLength={8}
+                required
+                autoComplete="new-password"
+              />
+            </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Non konplè
-                </label>
+            {erreur && (
+              <p role="alert" className="auth-form-error">
+                {erreur}
+              </p>
+            )}
+            {message && (
+              <p role="status" className="auth-form-success">
+                {message}
+              </p>
+            )}
 
-                <input
-                  type="text"
-                  value={nom}
-                  onChange={(e) => setNom(e.target.value)}
-                  placeholder="Antre non konplè ou"
-                  required
-                  autoComplete="name"
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#123BFF] focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="auth-submit"
+            >
+              {isSubmitting ? "Ap kreye kont la..." : "Kreye kont mwen"}
+            </button>
+          </form>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Imèl
-                </label>
-
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="egzanp@email.com"
-                  required
-                  autoComplete="email"
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#123BFF] focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Non biznis la
-                </label>
-
-                <input
-                  type="text"
-                  value={business}
-                  onChange={(e) => setBusiness(e.target.value)}
-                  placeholder="Antre non biznis ou"
-                  required
-                  autoComplete="organization"
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#123BFF] focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Modpas
-                </label>
-
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Kreye yon modpas"
-                  minLength={8}
-                  required
-                  autoComplete="new-password"
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#123BFF] focus:ring-2 focus:ring-blue-100"
-                />
-
-                <p className="mt-2 text-xs text-gray-400">
-                  Modpas la dwe gen omwen 8 karaktè.
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Konfime modpas
-                </label>
-
-                <input
-                  type="password"
-                  value={confirmation}
-                  onChange={(e) => setConfirmation(e.target.value)}
-                  placeholder="Antre modpas la ankò"
-                  minLength={8}
-                  required
-                  autoComplete="new-password"
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#123BFF] focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              {erreur && (
-                <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-                  {erreur}
-                </p>
-              )}
-              {message && (
-                <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">
-                  {message}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-lg bg-[#123BFF] py-3.5 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSubmitting ? "Ap kreye kont la..." : "Kreye kont mwen"}
-              </button>
-
-            </form>
-
-            <p className="mt-7 text-center text-sm text-gray-500">
+          <div className="auth-divider">
+            <p className="auth-footer-copy">
               Ou deja gen yon kont?{" "}
-              <Link
-                href="/connexion"
-                className="font-bold text-[#123BFF] hover:underline"
-              >
+              <Link href="/connexion" className="auth-link">
                 Konekte
               </Link>
             </p>
-
           </div>
-
-          <p className="mt-7 text-center text-xs text-gray-400">
-            © 2026 Business Core. Tout dwa rezève.
-          </p>
-
         </div>
 
+        <p className="auth-legal-note">
+          Lè w kreye kont lan, ou dakò ak{" "}
+          <Link href="/conditions-utilisation" className="auth-link">
+            kondisyon itilizasyon yo
+          </Link>{" "}
+          ak{" "}
+          <Link href="/politique-confidentialite" className="auth-link">
+            politik konfidansyalite a
+          </Link>
+          .
+        </p>
       </section>
     </main>
   );

@@ -12,7 +12,7 @@ export default function WorkspaceSection({
   return (
     <WorkspaceShell>
       <section>
-        <p className="text-sm font-semibold text-[#123BFF]">Business Core</p>
+        <p className="workspace-section-kicker">Business Core</p>
         <h2 className="mt-2 text-3xl font-bold">{title}</h2>
         <p className="workspace-muted mt-2 max-w-2xl text-sm leading-6">
           {description}

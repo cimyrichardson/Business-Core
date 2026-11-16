@@ -63,25 +63,25 @@ export default function AuthControls() {
   }
 
   if (loading) {
-    return <span className="h-10 w-32 animate-pulse rounded-lg bg-blue-50" />;
+    return <span className="h-10 w-32 animate-pulse rounded-lg bg-[#e6ede2]" />;
   }
 
   if (user) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="auth-controls">
         <span className="hidden text-sm font-semibold sm:inline">
           Bonjou, {getUserDisplayName(user)}
         </span>
         <Link
           href="/dashboard"
-          className="rounded-lg bg-[#123BFF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800"
+          className="auth-control-link auth-control-primary"
         >
           Tablo bò
         </Link>
         <button
           type="button"
           onClick={handleSignOut}
-          className="rounded-lg border border-[#123BFF] px-4 py-2.5 text-sm font-semibold text-[#123BFF] transition hover:bg-blue-50"
+          className="auth-control-button"
         >
           Dekonekte
         </button>
@@ -95,16 +95,16 @@ export default function AuthControls() {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="auth-controls">
       <Link
         href="/connexion"
-        className="rounded-lg border border-[#123BFF] px-4 py-2.5 text-sm font-semibold text-[#123BFF] transition hover:bg-blue-50"
+        className="auth-control-link"
       >
         Konekte
       </Link>
       <Link
         href="/inscription"
-        className="rounded-lg bg-[#123BFF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800"
+        className="auth-control-link auth-control-primary"
       >
         Kreye kont
       </Link>
