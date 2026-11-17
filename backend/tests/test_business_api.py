@@ -1,9 +1,16 @@
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
+from types import SimpleNamespace
 from uuid import uuid4
 
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.database import get_database_session
+from app.dependencies import get_business_id
+from app.main import api
 from app.models import Business, Product
+from app.periods import BUSINESS_TIMEZONE
 
 
 def test_health_does_not_require_database_configuration(api_client):
@@ -130,3 +137,87 @@ def test_dashboard_returns_business_totals_and_low_stock(api_client):
     assert summary["sales_count"] == 1
     assert summary["low_stock_count"] == 1
     assert summary["top_products"][0]["quantity"] == 1
+    assert len(summary["daily_activity"]) == 30
+
+    today_activity = next(
+        item
+        for item in summary["daily_activity"]
+        if item["date"] == date.today().isoformat()
+    )
+    assert all(
+        type(item[field]) is int
+        for item in summary["daily_activity"]
+        for field in ("revenue_htg", "expenses_htg", "sales_count")
+    )
+    assert today_activity["revenue_htg"] == 250
+    assert today_activity["expenses_htg"] == 75
+    assert today_activity["sales_count"] == 1
+
+
+def test_dashboard_serializes_postgres_daily_aggregates_as_json_integers():
+    test_date = datetime.now(BUSINESS_TIMEZONE).date()
+
+    class AggregateSession:
+        def __init__(self):
+            self.scalar_values = iter(
+                [Decimal("250.00"), Decimal("75.00"), 1, 0],
+            )
+            self.query_rows = iter(
+                [
+                    [
+                        SimpleNamespace(
+                            activity_date=test_date,
+                            revenue_htg=Decimal("250.00"),
+                            sales_count=1,
+                        ),
+                    ],
+                    [
+                        SimpleNamespace(
+                            activity_date=test_date,
+                            expenses_htg=Decimal("75.00"),
+                        ),
+                    ],
+                    [],
+                ],
+            )
+
+        def get_bind(self):
+            return SimpleNamespace(
+                dialect=SimpleNamespace(name="postgresql"),
+            )
+
+        def scalar(self, statement):
+            return next(self.scalar_values)
+
+        def execute(self, statement):
+            return iter(next(self.query_rows))
+
+        def scalars(self, statement):
+            return iter(())
+
+    database_override = api.dependency_overrides.get(get_database_session)
+    business_override = api.dependency_overrides.get(get_business_id)
+    api.dependency_overrides[get_database_session] = lambda: AggregateSession()
+    api.dependency_overrides[get_business_id] = lambda: uuid4()
+
+    try:
+        with TestClient(api) as client:
+            response = client.get("/api/v1/dashboard/summary?period=7days")
+    finally:
+        if database_override is None:
+            api.dependency_overrides.pop(get_database_session, None)
+        else:
+            api.dependency_overrides[get_database_session] = database_override
+        if business_override is None:
+            api.dependency_overrides.pop(get_business_id, None)
+        else:
+            api.dependency_overrides[get_business_id] = business_override
+
+    assert response.status_code == 200
+    today_activity = next(
+        item
+        for item in response.json()["daily_activity"]
+        if item["date"] == test_date.isoformat()
+    )
+    assert type(today_activity["expenses_htg"]) is int
+    assert today_activity["expenses_htg"] == 75

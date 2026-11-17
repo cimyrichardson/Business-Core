@@ -9,12 +9,22 @@ import { usePathname, useRouter } from "next/navigation";
 import { getAuthErrorMessage, getSupabaseClient, getUserDisplayName } from "@/lib/supabase";
 
 const navigation = [
-  { href: "/dashboard", label: "Tablo bò", icon: "T" },
-  { href: "/pwodwi", label: "Pwodwi ak stòk", icon: "P" },
-  { href: "/vant", label: "Vant", icon: "V" },
-  { href: "/depans", label: "Depans", icon: "D" },
-  { href: "/asistan", label: "Asistan", icon: "A" },
-  { href: "/kanal", label: "Mesaj ak rapò", icon: "M" },
+  { href: "/dashboard", label: "Tablo bò", mobileLabel: "Tablo", icon: "T" },
+  {
+    href: "/pwodwi",
+    label: "Pwodwi ak stòk",
+    mobileLabel: "Stòk",
+    icon: "P",
+  },
+  { href: "/vant", label: "Vant", mobileLabel: "Vant", icon: "V" },
+  { href: "/depans", label: "Depans", mobileLabel: "Depans", icon: "D" },
+  { href: "/asistan", label: "Asistan", mobileLabel: "Asistan", icon: "A" },
+  {
+    href: "/kanal",
+    label: "Mesaj ak rapò",
+    mobileLabel: "Rapò",
+    icon: "M",
+  },
 ];
 
 const WorkspaceUserContext = createContext<User | null>(null);
@@ -161,25 +171,16 @@ export default function WorkspaceShell({
                   <span className="workspace-nav-icon" aria-hidden="true">
                     {item.icon}
                   </span>
-                  {item.label}
+                  <span className="workspace-nav-label">{item.label}</span>
+                  <span className="workspace-nav-mobile-label">
+                    {item.mobileLabel}
+                  </span>
                 </Link>
               );
             })}
           </nav>
 
           <div className="workspace-sidebar-bottom">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={isDark ? "Aktive mòd klè" : "Aktive mòd nwa"}
-              aria-pressed={isDark}
-              className="workspace-nav-link workspace-theme-button"
-            >
-              <span className="workspace-nav-icon" aria-hidden="true">
-                {isDark ? "☼" : "◐"}
-              </span>
-              {isDark ? "Klè" : "Nwa"}
-            </button>
             <Link href="/" className="workspace-nav-link">
               <span className="workspace-nav-icon" aria-hidden="true">
                 ↩
@@ -208,6 +209,16 @@ export default function WorkspaceShell({
                     : user.email}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={isDark ? "Aktive mòd klè" : "Aktive mòd nwa"}
+                aria-pressed={isDark}
+                className="workspace-signout workspace-theme-toggle"
+              >
+                <span aria-hidden="true">{isDark ? "☼" : "◐"}</span>
+                <span>{isDark ? "Klè" : "Nwa"}</span>
+              </button>
               <button
                 type="button"
                 onClick={signOut}

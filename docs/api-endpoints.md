@@ -40,6 +40,11 @@ cet identifiant.
 | GET | `/api/v1/expenses?period=30days` | Dépenses récentes |
 | POST | `/api/v1/expenses` | Enregistrer une dépense |
 
+La page `/asistan` est actuellement un espace réservé; l'endpoint
+`POST /api/v1/assistant/ask` n'est pas encore implémenté. Le contrat proposé,
+les intents, les règles de sécurité et le plan de réalisation sont dans
+[`assistant-implementation.md`](./assistant-implementation.md).
+
 Les périodes `7days` et `30days` incluent aujourd'hui et les jours précédents;
 `month` commence le premier jour du mois courant. Les bornes de date utilisent
 le fuseau `America/Port-au-Prince`.
@@ -92,5 +97,7 @@ supérieure au stock disponible.
 
 `GET /api/v1/dashboard/summary?period=7days` renvoie les totaux de ventes et
 dépenses, le nombre de ventes, les cinq produits les plus vendus et jusqu'à
-vingt produits en stock bas. Une réponse vide contient des totaux à zéro et
-des listes vides; aucune donnée de démonstration n'est inventée par l'API.
+vingt produits en stock bas. `daily_activity` fournit une entrée par jour de la
+période, y compris les jours sans mouvement, pour tracer les courbes de ventes
+et de dépenses. Une réponse vide contient des totaux à zéro et une série
+journalière à zéro; aucune donnée de démonstration n'est inventée par l'API.

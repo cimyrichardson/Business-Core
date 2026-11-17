@@ -41,6 +41,13 @@ export interface TopProduct {
   revenue_htg: number;
 }
 
+export interface DailyActivity {
+  date: string;
+  revenue_htg: number;
+  expenses_htg: number;
+  sales_count: number;
+}
+
 export interface DashboardSummary {
   period: PeriodKey;
   start_date: string;
@@ -49,6 +56,7 @@ export interface DashboardSummary {
   expenses_total_htg: number;
   sales_count: number;
   low_stock_count: number;
+  daily_activity: DailyActivity[];
   top_products: TopProduct[];
   low_stock_products: Product[];
 }
@@ -152,6 +160,16 @@ function parseTopProduct(value: unknown): TopProduct {
   };
 }
 
+function parseDailyActivity(value: unknown): DailyActivity {
+  const activity = asRecord(value, "aktivite chak jou");
+  return {
+    date: asString(activity.date, "dat aktivite"),
+    revenue_htg: asInteger(activity.revenue_htg, "chif dafè chak jou"),
+    expenses_htg: asInteger(activity.expenses_htg, "depans chak jou"),
+    sales_count: asInteger(activity.sales_count, "kantite vant chak jou"),
+  };
+}
+
 function parseList<T>(
   value: unknown,
   label: string,
@@ -180,6 +198,11 @@ function parseDashboardSummary(value: unknown): DashboardSummary {
     ),
     sales_count: asInteger(summary.sales_count, "kantite vant"),
     low_stock_count: asInteger(summary.low_stock_count, "kantite stòk ba"),
+    daily_activity: parseList(
+      summary.daily_activity,
+      "aktivite chak jou",
+      parseDailyActivity,
+    ),
     top_products: parseList(
       summary.top_products,
       "pwodwi ki vann",

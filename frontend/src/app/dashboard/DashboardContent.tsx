@@ -4,17 +4,176 @@ import { useEffect, useState } from "react";
 
 import {
   getDashboardSummary,
+  type DailyActivity,
   type DashboardSummary,
   type PeriodKey,
 } from "@/lib/business-api";
 import { formatBusinessDate, formatHTG } from "@/lib/business-format";
 import { useWorkspaceUser } from "../WorkspaceShell";
 
-const periods: { key: PeriodKey; label: string }[] = [
-  { key: "7days", label: "7 dènye jou" },
-  { key: "month", label: "Mwa sa a" },
-  { key: "30days", label: "30 dènye jou" },
+const periods: { key: PeriodKey; label: string; shortLabel: string }[] = [
+  { key: "7days", label: "7 dènye jou", shortLabel: "7 jou" },
+  { key: "month", label: "Mwa sa a", shortLabel: "Mwa sa" },
+  { key: "30days", label: "30 dènye jou", shortLabel: "30 jou" },
 ];
+
+const activitySeries = [
+  { key: "revenue_htg", label: "Chif dafè", color: "#397b56" },
+  { key: "expenses_htg", label: "Depans", color: "#d99524" },
+] as const;
+
+function compactHTG(value: number): string {
+  return new Intl.NumberFormat("fr-HT", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function DailyActivityChart({
+  data,
+  isLoading,
+}: {
+  data: DailyActivity[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <p className="workspace-empty px-5 py-10 text-center text-sm">
+        Ap chaje aktivite chak jou...
+      </p>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <p className="workspace-empty px-5 py-10 text-center text-sm">
+        Graf aktivite a poko disponib.
+      </p>
+    );
+  }
+
+  const chartWidth = 720;
+  const chartHeight = 240;
+  const chartTop = 12;
+  const chartBottom = chartHeight - 12;
+  const maxAmount = Math.max(
+    1,
+    ...data.flatMap((day) => [day.revenue_htg, day.expenses_htg]),
+  );
+  const pointX = (index: number) =>
+    8 + (index / Math.max(data.length - 1, 1)) * (chartWidth - 16);
+  const pointY = (value: number) =>
+    chartTop +
+    ((maxAmount - value) / maxAmount) * (chartBottom - chartTop);
+  const labelIndexes = [
+    0,
+    Math.floor((data.length - 1) / 2),
+    data.length - 1,
+  ].filter((index, position, indexes) => indexes.indexOf(index) === position);
+  const hasActivity = data.some(
+    (day) =>
+      day.revenue_htg > 0 || day.expenses_htg > 0 || day.sales_count > 0,
+  );
+
+  return (
+    <figure className="workspace-trend-figure">
+      <div className="workspace-trend-legend" aria-hidden="true">
+        {activitySeries.map((series) => (
+          <span key={series.key} className="workspace-trend-legend-item">
+            <span
+              className="workspace-trend-legend-mark"
+              style={{ backgroundColor: series.color }}
+            />
+            {series.label}
+          </span>
+        ))}
+      </div>
+
+      <div className="workspace-trend-chart">
+        <div className="workspace-trend-y-axis" aria-hidden="true">
+          <span>{compactHTG(maxAmount)}</span>
+          <span>{compactHTG(maxAmount / 2)}</span>
+          <span>0</span>
+        </div>
+        <div className="workspace-trend-plot">
+          <svg
+            className="workspace-trend-svg"
+            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+            preserveAspectRatio="none"
+            role="img"
+            aria-labelledby="daily-activity-title daily-activity-description"
+          >
+            <title id="daily-activity-title">
+              Chif dafè ak depans pou chak jou
+            </title>
+            <desc id="daily-activity-description">
+              {hasActivity
+                ? `Graf pou ${data.length} jou.`
+                : "Pa gen chif dafè ni depans pou peryòd sa a."}
+            </desc>
+            {[chartTop, (chartTop + chartBottom) / 2, chartBottom].map((y) => (
+              <line
+                key={y}
+                x1="0"
+                y1={y}
+                x2={chartWidth}
+                y2={y}
+                className="workspace-trend-gridline"
+              />
+            ))}
+
+            {activitySeries.map((series) => (
+              <g key={series.key}>
+                <polyline
+                  points={data
+                    .map(
+                      (day, index) =>
+                        `${pointX(index)},${pointY(day[series.key])}`,
+                    )
+                    .join(" ")}
+                  fill="none"
+                  stroke={series.color}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+                {data.map((day, index) => (
+                  <circle
+                    key={day.date}
+                    cx={pointX(index)}
+                    cy={pointY(day[series.key])}
+                    r="3"
+                    fill={series.color}
+                    vectorEffect="non-scaling-stroke"
+                  >
+                    <title>
+                      {formatBusinessDate(day.date)} · {series.label}:{" "}
+                      {formatHTG(day[series.key])}
+                    </title>
+                  </circle>
+                ))}
+              </g>
+            ))}
+          </svg>
+          <div className="workspace-trend-x-axis" aria-hidden="true">
+            {labelIndexes.map((index) => (
+              <span key={data[index].date}>
+                {formatBusinessDate(data[index].date)}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {!hasActivity && (
+        <figcaption className="workspace-muted mt-2 text-center text-xs">
+          Pa gen mouvman pou peryòd sa a.
+        </figcaption>
+      )}
+    </figure>
+  );
+}
 
 export default function DashboardContent() {
   const user = useWorkspaceUser();
@@ -84,6 +243,23 @@ export default function DashboardContent() {
     1,
     ...(summary?.top_products.map((product) => product.quantity) ?? []),
   );
+  const comparisonMax = Math.max(
+    summary?.revenue_htg ?? 0,
+    summary?.expenses_total_htg ?? 0,
+    1,
+  );
+  const comparison = [
+    {
+      label: "Chif dafè",
+      value: summary?.revenue_htg ?? 0,
+      color: "workspace-chart-bar-revenue",
+    },
+    {
+      label: "Depans",
+      value: summary?.expenses_total_htg ?? 0,
+      color: "workspace-chart-bar-expenses",
+    },
+  ];
 
   return (
     <>
@@ -117,7 +293,12 @@ export default function DashboardContent() {
               }}
               className="workspace-period-button whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition sm:text-sm"
             >
-              {option.label}
+              <span className="workspace-period-label">
+                {option.label}
+              </span>
+              <span className="workspace-period-short-label">
+                {option.shortLabel}
+              </span>
             </button>
           ))}
         </div>
@@ -176,6 +357,74 @@ export default function DashboardContent() {
       <p className="workspace-muted mt-4 text-xs">
         Nòt: chif dafè mwens depans pa vle di benefis nèt kontab.
       </p>
+
+      <section className="mt-6">
+        <article className="workspace-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-lg font-bold">Aktivite chak jou</h3>
+              <p className="workspace-muted mt-1 text-sm">
+                Chif dafè ak depans · {periodRange || "peryòd sa a"}
+              </p>
+            </div>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
+              HTG
+            </span>
+          </div>
+          <div className="mt-5" aria-busy={isLoading}>
+            <DailyActivityChart
+              data={summary?.daily_activity ?? []}
+              isLoading={isLoading}
+            />
+          </div>
+        </article>
+      </section>
+
+      <section className="mt-6">
+        <article className="workspace-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-lg font-bold">Chif dafè ak depans</h3>
+              <p className="workspace-muted mt-1 text-sm">
+                Konparezon pou {periodRange || "peryòd sa a"}
+              </p>
+            </div>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
+              HTG
+            </span>
+          </div>
+
+          <div
+            className="workspace-comparison-chart mt-5"
+            role="img"
+            aria-label={
+              summary
+                ? `Konparezon: chif dafè ${formatHTG(summary.revenue_htg)} ak depans ${formatHTG(summary.expenses_total_htg)}`
+                : error
+                  ? "Done konparezon chif dafè ak depans yo pa disponib"
+                  : "Konparezon chif dafè ak depans ap chaje"
+            }
+            aria-busy={isLoading}
+          >
+            {comparison.map((item) => (
+              <div key={item.label} className="workspace-chart-column">
+                <span className="workspace-chart-value">
+                  {isLoading ? "…" : formatHTG(item.value)}
+                </span>
+                <div className="workspace-chart-bar-slot">
+                  <span
+                    className={`workspace-chart-bar ${item.color}`}
+                    style={{
+                      height: `${(item.value / comparisonMax) * 100}%`,
+                    }}
+                  />
+                </div>
+                <span className="workspace-chart-label">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
 
       <section className="mt-7 grid gap-5 lg:grid-cols-5">
         <article className="workspace-card p-5 shadow-sm lg:col-span-3 sm:p-6">

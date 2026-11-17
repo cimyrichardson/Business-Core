@@ -44,7 +44,9 @@ Une commerçante ou un commerçant qui tient une boutique de quartier (alimentat
 5. Calculer les indicateurs métier de façon fiable et testée.
 6. Traiter au moins quatre questions prédéfinies en créole, sur le web **et** par messagerie.
 7. Envoyer automatiquement un résumé et des alertes de stock bas par messagerie.
-8. Démontrer l'orchestration d'outils métier, avec un mode de secours sans modèle IA.
+8. Démontrer un assistant utilisant un modèle IA pour comprendre les questions
+   et formuler les réponses, avec des outils métier déterministes et un mode de
+   secours sans modèle IA.
 9. Présenter clairement les limites du prototype.
 
 **Fonctionnalité bonus (si le temps le permet) :** enregistrer une vente par message, avec confirmation obligatoire.
@@ -88,8 +90,21 @@ Une commerçante ou un commerçant qui tient une boutique de quartier (alimentat
 
 ### IA
 
-- **Mode principal (facultatif) :** modèle de langage avec appel d'outils (*tool calling*). Le modèle choisit parmi une liste fermée de fonctions autorisées et rédige la réponse **en créole** à partir du résultat.
-- **Mode de secours (obligatoire) :** routeur par mots-clés créole + modèles de phrases créoles écrits à la main. La démo doit fonctionner avec ce seul mode.
+- **Mode principal (requis pour l'assistant) :** modèle de langage avec appel
+  d'outils (*tool calling*). Le modèle comprend la question, choisit parmi une
+  liste fermée de fonctions autorisées et formule la réponse **en créole** à
+  partir des résultats calculés par le backend.
+- **Mode de secours (obligatoire) :** routeur par mots-clés créole + modèles de
+  phrases créoles écrits à la main. Il prend le relais si le fournisseur IA est
+  indisponible; la réponse doit alors être identifiée comme issue du secours.
+- **Ordre des fournisseurs :** Gemini → Groq → OpenRouter. Les identifiants de
+  modèles et les clés sont configurés côté backend; les règles de bascule sont
+  décrites dans [`ai-provider-routing.md`](./ai-provider-routing.md).
+- **Canaux et audio :** les opérations textuelles et vocales passent par le
+  même orchestrateur; voir [`channels-whatsapp-telegram.md`](./channels-whatsapp-telegram.md)
+  pour la liaison des comptes, les confirmations et la transcription audio.
+- Les chiffres, périodes et filtres de commerce sont toujours vérifiés et
+  calculés par le backend, jamais inventés par le modèle.
 - **VYROXMIND :** composant expérimental facultatif, branché via un adaptateur ; présenté comme expérimental tant que ses performances ne sont pas évaluées.
 
 **Pile recommandée pour aller vite :** React + TypeScript + Vite, FastAPI + SQLAlchemy + PostgreSQL sur Supabase. FastAPI reste l'unique API métier ; le frontend ne se connecte pas directement à la base. Ne multipliez pas les bibliothèques avant d'avoir un parcours fonctionnel.
@@ -215,14 +230,23 @@ Les mots français courants (« dépenses », « résume », « plus vendus ») 
 
 ### 6.5 Canaux de messagerie
 
-#### Trois niveaux de fonctionnalités
+#### Capacités des canaux
 
-1. **Questions-réponses (cœur du MVP).** Les quatre questions de démo, posées par message.
-2. **Alertes et rapports automatiques (fort effet en démo).** Envoyés sans demande :
-   - résumé de fin de journée et de fin de semaine ;
-   - alerte quand un produit passe sous son seuil ;
-   - rappel si aucune vente n'a été enregistrée depuis plusieurs jours.
-3. **Saisie par message (bonus).** Voir ci-dessous.
+1. **Questions-réponses :** ventes, dépenses, produits, stock et rapports,
+   avec indication de la période réellement utilisée.
+2. **Opérations :** proposer par conversation les mêmes opérations que celles
+   disponibles sur le web et dans l'API. Toute écriture doit être récapitulée
+   puis confirmée avant exécution. Une opération absente de l'API n'est pas
+   simulée par l'assistant.
+3. **Audio entrant :** recevoir les messages vocaux, les transcrire en créole,
+   puis les traiter avec le même orchestrateur que les messages texte. Une
+   transcription incertaine exige une clarification; elle ne déclenche jamais
+   directement une écriture.
+4. **Alertes et rapports automatiques :** résumé de fin de journée et de
+   semaine, alerte de stock sous le seuil et, si activé, rappel d'inactivité.
+
+Les limites, confirmations, liaisons de compte et exigences audio sont
+détaillées dans [`channels-whatsapp-telegram.md`](./channels-whatsapp-telegram.md).
 
 #### Exemples de messages en créole
 
@@ -242,7 +266,7 @@ Alerte de stock :
 Atansyon : Lwil 1 L anba limit stòk la. Rete 3 sou 5 minimòm.
 ```
 
-Saisie avec confirmation (bonus) :
+Opération avec confirmation :
 
 ```text
 Ou      : Mwen vann 3 diri
@@ -251,7 +275,12 @@ Ou      : wi
 Bot     : Vant la anrejistre. Rete 39 Diri 1 kg nan stòk.
 ```
 
-Règles de la saisie par message : correspondance prudente du produit (en cas de doute, le bot propose les choix), **confirmation obligatoire** avant tout enregistrement, action en attente qui expire au bout de quelques minutes, et un seul type d'action autorisé (vente).
+Pour toute écriture, le bot doit identifier les éléments sans ambiguïté,
+présenter un récapitulatif et obtenir une **confirmation explicite** avant
+l'enregistrement. Les actions en attente expirent après un délai court et ne
+sont valides que pour le contact et le canal qui les ont créées. Si le produit,
+la quantité ou toute autre donnée est ambiguë, le bot pose une question au lieu
+d'agir.
 
 #### Contraintes WhatsApp à vérifier avant de s'engager
 
@@ -657,7 +686,8 @@ Durée cible : 4 minutes. Une seule boucle, répétée plusieurs fois, **racont�
 4. **Vente et stock (40 s) :** enregistrer une vente (par le web, ou par message avec confirmation si le bonus est prêt). Le stock baisse et le produit passe en alerte.
 5. **Tableau de bord (30 s) :** montrer que les chiffres du web correspondent à ceux reçus par message.
 6. **Fiabilité (20 s) :** poser une question hors périmètre pour montrer le message clair en créole ; préciser que les chiffres viennent du backend, pas de l'IA.
-7. **Plan de secours (10 s) :** expliquer le mode sans API IA et le simulateur de canal ; Supabase reste nécessaire.
+7. **Plan de secours (10 s) :** montrer le mode sans API IA et le simulateur de
+   canal si le fournisseur est indisponible ; Supabase reste nécessaire.
 8. **Limites et suite (20 s) :** ce que le prototype ne fait pas ; feuille de route (SMS/USSD, notes vocales, mobile money).
 
 Le détail exact (questions, réponses attendues, ordre) est consigné dans `docs/demo-script.md`.
@@ -671,7 +701,10 @@ Le détail exact (questions, réponses attendues, ordre) est consigné dans `doc
 - [ ] Une vente avec stock insuffisant ou quantité invalide est refusée avec un message créole clair.
 - [ ] Les stocks bas sont détectés selon la règle fixée.
 - [ ] « jodi a », « semèn sa a », « mwa sa a » et l'absence de période donnent les bonnes plages, affichées dans la réponse.
-- [ ] Les quatre questions en créole fonctionnent, avec et sans accents, en mode de secours.
+- [ ] Les quatre questions en créole fonctionnent, avec et sans accents, avec
+  le modèle IA configuré.
+- [ ] Le mode de secours répond de façon limitée lorsque le fournisseur IA
+  n'est pas disponible et ne se présente pas comme une réponse du modèle.
 - [ ] Une question non prise en charge renvoie le message d'aide en créole.
 - [ ] Un numéro non enregistré reçoit « Nimewo sa a pa anrejistre. » et rien d'autre.
 - [ ] Les webhooks rejettent une requête dont la signature ou le secret est invalide.

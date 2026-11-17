@@ -93,6 +93,13 @@ class TopProductRead(BaseModel):
     revenue_htg: int
 
 
+class DailyActivityRead(BaseModel):
+    date: date
+    revenue_htg: int
+    expenses_htg: int
+    sales_count: int
+
+
 class DashboardSummary(BaseModel):
     period: PeriodKey
     start_date: date
@@ -101,5 +108,6 @@ class DashboardSummary(BaseModel):
     expenses_total_htg: int
     sales_count: int
     low_stock_count: int
+    daily_activity: list[DailyActivityRead]
     top_products: list[TopProductRead]
     low_stock_products: list[ProductRead]

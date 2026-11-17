@@ -61,6 +61,16 @@ Une vente utilise le prix enregistré du produit; le backend calcule le total
 et la migration PostgreSQL retire la quantité vendue du stock dans la même
 transaction.
 
+La page Assistant est encore un espace réservé. Son état actuel, son contrat
+d'API cible, son architecture et ses recommandations d'implémentation sont
+décrits dans [`docs/assistant-implementation.md`](./docs/assistant-implementation.md).
+L'ordre prévu pour les fournisseurs IA est Gemini → Groq → OpenRouter; voir
+[`docs/ai-provider-routing.md`](./docs/ai-provider-routing.md) pour le
+fonctionnement de la chaîne de secours.
+La conception de la communication par WhatsApp et Telegram, y compris les
+opérations métier, les confirmations et l'audio, est décrite dans
+[`docs/channels-whatsapp-telegram.md`](./docs/channels-whatsapp-telegram.md).
+
 ## Migration de la base
 
 La migration initiale est dans

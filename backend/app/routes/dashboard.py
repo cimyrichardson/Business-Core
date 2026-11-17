@@ -1,14 +1,17 @@
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.database import get_database_session
 from app.dependencies import get_business_id
 from app.models import Expense, Product, Sale
-from app.periods import period_datetimes, period_dates
+from app.periods import BUSINESS_TIMEZONE, period_datetimes, period_dates
 from app.schemas import (
+    DailyActivityRead,
     DashboardSummary,
     PeriodKey,
     ProductRead,
@@ -16,6 +19,23 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+def _business_date_expression(
+    column: ColumnElement[datetime],
+    db: Session,
+) -> ColumnElement[date]:
+    if db.get_bind().dialect.name == "sqlite":
+        return func.date(column)
+    return func.date(func.timezone(BUSINESS_TIMEZONE.key, column))
+
+
+def _as_date(value: date | str) -> date:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(value)
 
 
 @router.get("/summary", response_model=DashboardSummary)
@@ -48,6 +68,58 @@ def get_summary(
     sales_count = db.scalar(
         select(func.count(Sale.id)).where(*period_sales)
     )
+
+    daily_activity: dict[date, DailyActivityRead] = {}
+    activity_date = start_date
+    while activity_date <= end_date:
+        daily_activity[activity_date] = DailyActivityRead(
+            date=activity_date,
+            revenue_htg=0,
+            expenses_htg=0,
+            sales_count=0,
+        )
+        activity_date += timedelta(days=1)
+
+    sale_day = _business_date_expression(Sale.sold_at, db)
+    sale_activity_rows = db.execute(
+        select(
+            sale_day.label("activity_date"),
+            func.sum(Sale.total_htg).label("revenue_htg"),
+            func.count(Sale.id).label("sales_count"),
+        )
+        .where(*period_sales)
+        .group_by(sale_day)
+    )
+    for row in sale_activity_rows:
+        activity_day = _as_date(row.activity_date)
+        if activity_day in daily_activity:
+            current = daily_activity[activity_day]
+            daily_activity[activity_day] = DailyActivityRead(
+                date=activity_day,
+                revenue_htg=int(row.revenue_htg or 0),
+                expenses_htg=current.expenses_htg,
+                sales_count=int(row.sales_count or 0),
+            )
+
+    expense_day = _business_date_expression(Expense.spent_at, db)
+    expense_activity_rows = db.execute(
+        select(
+            expense_day.label("activity_date"),
+            func.sum(Expense.amount_htg).label("expenses_htg"),
+        )
+        .where(*period_expenses)
+        .group_by(expense_day)
+    )
+    for row in expense_activity_rows:
+        activity_day = _as_date(row.activity_date)
+        if activity_day in daily_activity:
+            current = daily_activity[activity_day]
+            daily_activity[activity_day] = DailyActivityRead(
+                date=activity_day,
+                revenue_htg=current.revenue_htg,
+                expenses_htg=int(row.expenses_htg or 0),
+                sales_count=current.sales_count,
+            )
 
     top_rows = db.execute(
         select(
@@ -108,6 +180,7 @@ def get_summary(
         expenses_total_htg=expenses_total_htg or 0,
         sales_count=sales_count or 0,
         low_stock_count=low_stock_count or 0,
+        daily_activity=list(daily_activity.values()),
         top_products=top_products,
         low_stock_products=low_stock_products,
     )
