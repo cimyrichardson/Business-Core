@@ -70,6 +70,12 @@ fonctionnement de la chaîne de secours.
 La conception de la communication par WhatsApp et Telegram, y compris les
 opérations métier, les confirmations et l'audio, est décrite dans
 [`docs/channels-whatsapp-telegram.md`](./docs/channels-whatsapp-telegram.md).
+Le backend dispose maintenant des endpoints de liaison et de webhook. Appliquez
+la migration
+[`supabase/migrations/20261117153000_channel_linking_and_deduplication.sql`](./supabase/migrations/20261117153000_channel_linking_and_deduplication.sql)
+après la migration initiale. Copiez `backend/.env.example` vers `backend/.env`
+et ajoutez les secrets Telegram, WhatsApp et Gemini nécessaires; les valeurs
+réelles ne doivent jamais être commitées.
 
 ## Migration de la base
 

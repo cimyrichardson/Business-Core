@@ -46,6 +46,104 @@ class BusinessMember(Base):
     )
 
 
+class Contact(Base):
+    __tablename__ = "contacts"
+    __table_args__ = (
+        UniqueConstraint("business_id", "channel", "external_id"),
+        UniqueConstraint("business_id", "id"),
+        CheckConstraint("channel IN ('whatsapp', 'telegram')"),
+        CheckConstraint("length(trim(external_id)) > 0"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+    business_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("businesses.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(120))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class ChannelLinkToken(Base):
+    __tablename__ = "channel_link_tokens"
+    __table_args__ = (
+        CheckConstraint("channel IN ('whatsapp', 'telegram')"),
+        CheckConstraint("length(token_hash) = 64"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+    business_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("businesses.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ChannelMessage(Base):
+    __tablename__ = "channel_messages"
+    __table_args__ = (
+        UniqueConstraint("channel", "external_message_id"),
+        CheckConstraint("channel IN ('whatsapp', 'telegram')"),
+        CheckConstraint("status IN ('processing', 'processed', 'failed')"),
+        CheckConstraint("length(trim(external_message_id)) > 0"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    external_message_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="SET NULL"),
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Product(Base):
     __tablename__ = "products"
     __table_args__ = (

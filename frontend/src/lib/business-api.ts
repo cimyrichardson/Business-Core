@@ -61,6 +61,21 @@ export interface DashboardSummary {
   low_stock_products: Product[];
 }
 
+export type ChannelKey = "whatsapp" | "telegram";
+
+export interface ChannelLink {
+  channel: ChannelKey;
+  connected: boolean;
+  name: string | null;
+  linked_at: string | null;
+}
+
+export interface ChannelLinkCode {
+  channel: ChannelKey;
+  code: string;
+  expires_at: string;
+}
+
 export class BusinessApiError extends Error {
   constructor(
     message: string,
@@ -170,6 +185,33 @@ function parseDailyActivity(value: unknown): DailyActivity {
   };
 }
 
+function parseChannelLink(value: unknown): ChannelLink {
+  const link = asRecord(value, "koneksyon chanèl");
+  const channel = asString(link.channel, "chanèl");
+  if (channel !== "whatsapp" && channel !== "telegram") {
+    throw new BusinessApiError("Chanèl sa a pa valab.");
+  }
+  return {
+    channel,
+    connected: asBoolean(link.connected, "eta koneksyon"),
+    name: asNullableString(link.name, "non kontak"),
+    linked_at: asNullableString(link.linked_at, "dat koneksyon"),
+  };
+}
+
+function parseChannelLinkCode(value: unknown): ChannelLinkCode {
+  const result = asRecord(value, "kòd koneksyon");
+  const channel = asString(result.channel, "chanèl");
+  if (channel !== "whatsapp" && channel !== "telegram") {
+    throw new BusinessApiError("Chanèl sa a pa valab.");
+  }
+  return {
+    channel,
+    code: asString(result.code, "kòd koneksyon"),
+    expires_at: asString(result.expires_at, "dat ekspirasyon"),
+  };
+}
+
 function parseList<T>(
   value: unknown,
   label: string,
@@ -256,6 +298,8 @@ async function requestApi(
     }
     throw cause;
   }
+
+  if (response.status === 204) return null;
 
   let payload: unknown;
   try {
@@ -348,4 +392,27 @@ export async function createExpense(input: {
     body: JSON.stringify(input),
   });
   return parseExpense(value);
+}
+
+export async function getChannelLinks(
+  signal?: AbortSignal,
+): Promise<ChannelLink[]> {
+  const value = await requestApi("/api/v1/channels/links", { signal });
+  return parseList(value, "koneksyon chanèl", parseChannelLink);
+}
+
+export async function createChannelLink(
+  channel: ChannelKey,
+): Promise<ChannelLinkCode> {
+  const value = await requestApi("/api/v1/channels/links", {
+    method: "POST",
+    body: JSON.stringify({ channel }),
+  });
+  return parseChannelLinkCode(value);
+}
+
+export async function revokeChannelLink(channel: ChannelKey): Promise<void> {
+  await requestApi(`/api/v1/channels/links/${channel}`, {
+    method: "DELETE",
+  });
 }

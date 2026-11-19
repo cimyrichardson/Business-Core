@@ -5,6 +5,24 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 PeriodKey = Literal["7days", "month", "30days"]
+ChannelKey = Literal["whatsapp", "telegram"]
+
+
+class ChannelLinkCreate(BaseModel):
+    channel: ChannelKey
+
+
+class ChannelLinkCreated(BaseModel):
+    channel: ChannelKey
+    code: str
+    expires_at: datetime
+
+
+class ChannelLinkRead(BaseModel):
+    channel: ChannelKey
+    connected: bool
+    name: str | None
+    linked_at: datetime | None
 
 
 class ProductCreate(BaseModel):

@@ -267,16 +267,51 @@ canaux.
 ## 10. API et responsabilités à implémenter
 
 Les routes de canaux ci-dessous sont une cible de conception; leur présence
-dans la documentation historique du hackathon ne signifie pas qu'elles sont
-déjà codées :
+dans le tableau marque les routes déjà ajoutées au backend et celles qui
+restent à construire :
 
-| Route proposée | Rôle |
-|---|---|
-| `GET/POST /api/v1/channels/whatsapp/webhook` | Vérifier le webhook et recevoir les événements WhatsApp |
-| `POST /api/v1/channels/telegram/webhook` | Recevoir les événements Telegram après vérification |
-| `POST /api/v1/channels/link` | Créer ou consommer une liaison initiée par un utilisateur authentifié |
-| `DELETE /api/v1/channels/{channel}/link` | Révoquer un canal depuis le web |
-| `POST /api/v1/channels/simulate` | Simuler un message dans les tests et la démo |
+| Route | État | Rôle |
+|---|---|---|---|
+| `GET /api/v1/channels/links` | Implémentée | Lister les liaisons depuis une session web |
+| `POST /api/v1/channels/links` | Implémentée | Émettre un code de liaison à usage unique |
+| `DELETE /api/v1/channels/links/{channel}` | Implémentée | Révoquer une liaison depuis le web |
+| `GET/POST /api/v1/channels/whatsapp/webhook` | Implémentée | Vérifier le webhook Meta et recevoir les messages signés |
+| `POST /api/v1/channels/telegram/webhook` | Implémentée | Recevoir les messages après vérification du secret |
+| `POST /api/v1/channels/simulate` | À construire | Simuler un message dans les tests et la démo |
+
+Le routeur déterministe de démarrage comprend actuellement les commandes
+d'aide, de résumé, de ventes, de dépenses, de produits et de stock. La création
+de ventes, de dépenses, de produits et les autres écritures conversationnelles
+avec confirmation restent à implémenter. L'audio entrant utilise Gemini pour
+la transcription et nécessite `GEMINI_API_KEY` et `GEMINI_AUDIO_MODEL` dans
+l'environnement backend.
+
+### Configuration et démarrage
+
+1. Appliquer la migration initiale, puis
+   `supabase/migrations/20261117153000_channel_linking_and_deduplication.sql`.
+2. Copier `backend/.env.example` vers `backend/.env` et renseigner uniquement
+   les secrets nécessaires au canal utilisé. Redémarrer FastAPI après toute
+   modification.
+3. Configurer le webhook Telegram avec une URL HTTPS publique, le secret
+   `TELEGRAM_WEBHOOK_SECRET` et l'adresse
+   `/api/v1/channels/telegram/webhook`.
+4. Configurer dans Meta l'URL
+   `/api/v1/channels/whatsapp/webhook`, le même
+   `WHATSAPP_VERIFY_TOKEN` et les secrets/identifiants de l'application
+   WhatsApp. Le GET de vérification et les notifications POST doivent être
+   accessibles en HTTPS.
+5. Se connecter au dashboard, choisir le canal dans « Mesaj ak rapò », générer
+   un code, puis envoyer `/link <code>` au bot avant son expiration.
+6. Dans le dashboard, vérifier que le canal affiche « Konekte », puis essayer
+   `èd`, `rezime`, `vant`, `depans`, `pwodwi` ou `stok`.
+7. Pour tester une note vocale, configurer aussi `GEMINI_API_KEY` et
+   `GEMINI_AUDIO_MODEL`, puis envoyer un court audio en créole au bot.
+
+Les webhooks sont désactivés tant que leurs secrets ne sont pas configurés; un
+code de liaison n'est pas émis pour un canal dont la configuration serveur est
+incomplète. Les fournisseurs n'ont pas été appelés pendant les tests
+automatisés.
 
 Le webhook n'utilise pas le Bearer token Supabase du navigateur : il vérifie
 l'authenticité du fournisseur puis autorise le contact via sa liaison en base.

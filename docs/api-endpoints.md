@@ -14,8 +14,8 @@ mot de passe de la base.
 
 ## Authentification et périmètre
 
-Sauf `/health`, chaque requête doit inclure le jeton d'accès de la session
-Supabase :
+Les routes métier destinées au navigateur exigent le jeton d'accès de la
+session Supabase :
 
 ```http
 Authorization: Bearer <access_token>
@@ -25,6 +25,10 @@ FastAPI vérifie le jeton auprès de Supabase Auth et trouve la boutique dans
 `business_members`. Le frontend ne transmet jamais `business_id`; l'API le
 déduit du compte authentifié et filtre toutes les lectures et écritures par
 cet identifiant.
+
+Les webhooks WhatsApp et Telegram ne reçoivent pas le Bearer token du
+commerçant : ils vérifient la signature ou le secret configuré du fournisseur,
+puis autorisent le contact à partir de sa liaison active en base.
 
 ## Endpoints disponibles
 
@@ -39,11 +43,20 @@ cet identifiant.
 | POST | `/api/v1/sales` | Enregistrer une vente et réduire le stock |
 | GET | `/api/v1/expenses?period=30days` | Dépenses récentes |
 | POST | `/api/v1/expenses` | Enregistrer une dépense |
+| GET | `/api/v1/channels/links` | État des liaisons WhatsApp/Telegram |
+| POST | `/api/v1/channels/links` | Créer un code de liaison authentifié |
+| DELETE | `/api/v1/channels/links/{channel}` | Révoquer une liaison |
+| GET/POST | `/api/v1/channels/whatsapp/webhook` | Vérification Meta et messages entrants signés |
+| POST | `/api/v1/channels/telegram/webhook` | Messages entrants avec secret webhook |
 
 La page `/asistan` est actuellement un espace réservé; l'endpoint
 `POST /api/v1/assistant/ask` n'est pas encore implémenté. Le contrat proposé,
 les intents, les règles de sécurité et le plan de réalisation sont dans
 [`assistant-implementation.md`](./assistant-implementation.md).
+Les routes de liaison et webhooks sont décrites dans
+[`channels-whatsapp-telegram.md`](./channels-whatsapp-telegram.md). Pour les
+utiliser, appliquez également la migration des canaux et configurez les
+secrets requis dans `backend/.env`.
 
 Les périodes `7days` et `30days` incluent aujourd'hui et les jours précédents;
 `month` commence le premier jour du mois courant. Les bornes de date utilisent
