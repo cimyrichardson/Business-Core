@@ -292,7 +292,9 @@ l'environnement backend.
    `supabase/migrations/20261117153000_channel_linking_and_deduplication.sql`.
 2. Copier `backend/.env.example` vers `backend/.env` et renseigner uniquement
    les secrets nécessaires au canal utilisé. Redémarrer FastAPI après toute
-   modification.
+   modification. Pour savoir où obtenir ces identifiants et comment
+   enregistrer chaque webhook, suivre le
+   [guide de configuration Telegram et WhatsApp](./channel-provider-credentials.md).
 3. Configurer le webhook Telegram avec une URL HTTPS publique, le secret
    `TELEGRAM_WEBHOOK_SECRET` et l'adresse
    `/api/v1/channels/telegram/webhook`.
@@ -361,4 +363,5 @@ La route de liaison, elle, exige une session web authentifiée.
 - [Guide d'implémentation de l'Assistant](./assistant-implementation.md)
 - [Chaîne des fournisseurs IA](./ai-provider-routing.md)
 - [Contrat de l'API métier](./api-endpoints.md)
+- [Obtenir les identifiants et configurer les webhooks](./channel-provider-credentials.md)
 - [Présentation et règles métier du hackathon](./projet_hackathon_docs.md)

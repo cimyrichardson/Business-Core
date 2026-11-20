@@ -75,7 +75,9 @@ la migration
 [`supabase/migrations/20261117153000_channel_linking_and_deduplication.sql`](./supabase/migrations/20261117153000_channel_linking_and_deduplication.sql)
 après la migration initiale. Copiez `backend/.env.example` vers `backend/.env`
 et ajoutez les secrets Telegram, WhatsApp et Gemini nécessaires; les valeurs
-réelles ne doivent jamais être commitées.
+réelles ne doivent jamais être commitées. Le guide
+[`docs/channel-provider-credentials.md`](./docs/channel-provider-credentials.md)
+explique comment obtenir les clés et configurer les webhooks des fournisseurs.
 
 ## Migration de la base
 
